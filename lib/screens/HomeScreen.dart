@@ -45,7 +45,7 @@ class HomeScreen extends StatelessWidget {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
+      /*floatingActionButton: FloatingActionButton(
         onPressed: () async {
           if (await requestStoragePermission()) {
             String? path = await FilePickerService.pickPDF();
@@ -55,10 +55,37 @@ class HomeScreen extends StatelessWidget {
           } else {
             // Show an alert to the user about missing permissions
           }
-          /*String? path = await FilePickerService.pickPDF();
+          *//*String? path = await FilePickerService.pickPDF();
           if (path != null) {
             pdfProvider.addPdf(path);
-          }*/
+          }*//*
+        },
+        child: const Icon(Icons.add),
+      ),*/
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          try {
+            debugPrint("Floating Action Button Pressed");
+
+            bool hasPermission = await requestStoragePermission();
+            debugPrint("Storage Permission: $hasPermission");
+
+            if (hasPermission) {
+              String? path = await FilePickerService.pickPDF();
+              debugPrint("Picked PDF Path: $path");
+
+              if (path != null) {
+                pdfProvider.addPdf(path);
+                debugPrint("PDF added to provider");
+              } else {
+                debugPrint("No file was selected");
+              }
+            } else {
+              debugPrint("Permission denied");
+            }
+          } catch (e) {
+            debugPrint("Error occurred: $e");
+          }
         },
         child: const Icon(Icons.add),
       ),
@@ -66,7 +93,22 @@ class HomeScreen extends StatelessWidget {
   }
 }
 Future<bool> requestStoragePermission() async {
-  PermissionStatus status = await Permission.storage.request();
-  return status.isGranted;
+  if (await Permission.storage.isGranted) {
+    return true;
+  }
 
+  // For Android 13+ (API 33+), use the new permissions
+  if (await Permission.manageExternalStorage.request().isGranted ||
+      await Permission.photos.request().isGranted ||
+      await Permission.videos.request().isGranted ||
+      await Permission.audio.request().isGranted) {
+    return true;
+  }
+
+  if (await Permission.storage.request().isPermanentlyDenied) {
+    await openAppSettings();
+    return false;
+  }
+
+  return false;
 }
